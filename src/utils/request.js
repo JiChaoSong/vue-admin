@@ -5,7 +5,7 @@ import { getToken } from '@/utils/auth'
 
 // create an axios instance
 const service = axios.create({
-  baseURL: process.env.VUE_APP_BASE_API, // url = base url + request url
+  // baseURL: process.env.VUE_APP_BASE_API, // url = base url + request url
   // withCredentials: true, // send cookies when cross-domain requests
   timeout: 5000 // request timeout
 })
@@ -19,7 +19,8 @@ service.interceptors.request.use(
       // let each request carry token
       // ['X-Token'] is a custom headers key
       // please modify it according to the actual situation
-      config.headers['X-Token'] = getToken()
+      config.headers.Authorization = getToken()
+      config.headers['Content-Type'] = 'application/json'
     }
     return config
   },
@@ -42,6 +43,24 @@ service.interceptors.response.use(
    * Here is just an example
    * You can also judge the status by HTTP Status Code
    */
+  config => {
+    // 后台使用jwt时候发送post请求必须使用 formdata模式
+    if (config.method === 'post') {
+      // JSON 转换为 FormData
+      const formData = new FormData()
+      Object.keys(config.data).forEach(key => formData.append(key, config.data[key]))
+      config.data = formData
+    }
+    if (store.getters.token) {
+      // let each request carry token
+      // ['X-Token'] is a custom headers key
+      // please modify it according to the actual situation
+      // config.headers['X-Token'] = getToken()
+      config.headers.Authorization = getToken()
+    }
+    config.headers['Content-Type'] = 'application/json'
+    return config
+  },
   response => {
     const res = response.data
 
@@ -72,12 +91,8 @@ service.interceptors.response.use(
     }
   },
   error => {
-    console.log('err' + error) // for debug
-    Message({
-      message: error.message,
-      type: 'error',
-      duration: 5 * 1000
-    })
+    // do something with request error
+    console.log(error) // for debug
     return Promise.reject(error)
   }
 )
